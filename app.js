@@ -34,7 +34,7 @@ const downloadYouTubeAudio = async (url, outputPath) => {
 };
 
 const transcribeAudio = async (audioFile, outputFile) => {
-    if (fs.existsSync(outputFile)) {
+    if (fs.existsSync(audioFile.replace('.wav','.txt'))) {
         console.log('Transcript file already exists, skipping transcription.');
         return;
     }
@@ -169,7 +169,7 @@ const main = async () => {
         const transcriptFilePath = path.join(directory, `${youtubeId}.txt`);
 
         await downloadYouTubeAudio(url, audioFilePath);
-        await transcribeAudio(audioFilePath, transcriptFilePath);
+        await transcribeAudio(audioFilePath, directory);
 
         if (fs.existsSync(transcriptFilePath)) {
             const transcript = fs.readFileSync(transcriptFilePath, 'utf8');
