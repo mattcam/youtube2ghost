@@ -1,0 +1,23 @@
+{
+  "name": "youtube2ghost",
+  "version": "0.1.0",
+  "description": "Used to create a Ghost post using genAI with content sourced from a Youtube video.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "mattcam",
+  "license": "MIT",
+  "dependencies": {
+    "@tryghost/admin-api": "^1.13.12",
+    "argparse": "^2.0.1",
+    "axios": "^1.7.2",
+    "ffmpeg": "^0.0.4",
+    "ffmpeg-static": "^5.2.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "jimp": "^0.22.12",
+    "js-yaml": "^4.1.0",
+    "showdown": "^2.1.0",
+    "ytdl-core": "^4.11.5"
+  }
+}
