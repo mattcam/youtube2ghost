@@ -9,6 +9,7 @@ const yaml = require('js-yaml');
 const { ArgumentParser } = require('argparse');
 const GhostAdminAPI = require('@tryghost/admin-api');
 const showdown = require('showdown');
+const sharp = require('sharp');
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -82,6 +83,25 @@ const readImageFile = async (imagePath) => {
         return imageBuffer;
     } catch (error) {
         console.error('Failed to read image file:', error.message);
+        throw error;
+    }
+};
+
+const playButtonSVG = Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 100">
+  <rect x="0" y="0" width="150" height="100" rx="25" ry="25" fill="rgba(255,0,0,0.8)" />
+  <polygon points="55,25 95,50 55,75" fill="white"/>
+</svg>
+`);
+
+const addPlayButtonOverlay = async (thumbnailPath, outputPath) => {
+    try {
+        await sharp(thumbnailPath)
+            .composite([{ input: playButtonSVG, gravity: 'center' }])
+            .toFile(outputPath);
+        console.log('Play button overlay added successfully');
+    } catch (error) {
+        console.error('Failed to add play button overlay:', error.message);
         throw error;
     }
 };
@@ -181,23 +201,25 @@ const main = async () => {
 
             const body = `${title}\n\n${url}\n\n${teaser}\n\n${content}\n\n${cta}`;
             const codeInjectionHead = '<style>figure.gh-article-image {display:none;}</style>';
-            const imagePath = path.join(directory, `${youtubeId}.jpg`);
+            const thumbnailPath = path.join(directory, `${youtubeId}.jpg`);
+            const outputPath = path.join(directory, `${youtubeId}_with_button.jpg`);
             const thumbnailUrl = getYouTubeThumbnail(youtubeId);
 
             const response = await axios({ url: thumbnailUrl, responseType: 'stream' });
-            response.data.pipe(fs.createWriteStream(imagePath));
+            response.data.pipe(fs.createWriteStream(thumbnailPath));
             await new Promise((resolve, reject) => {
                 response.data.on('end', resolve);
                 response.data.on('error', reject);
             });
 
+            await addPlayButtonOverlay(thumbnailPath, outputPath);
             const ghostApi = new GhostAdminAPI({
                 url: ghostUrl,
                 key: ghostKey,
                 version: 'v5.0'
             });
 
-            const featureImage = await uploadGhostImage(ghostApi, imagePath);
+            const featureImage = await uploadGhostImage(ghostApi, outputPath);
 
             await createGhostPost(ghostUrl, ghostKey, youtubeId, body, featureImage, codeInjectionHead);
         } else {
