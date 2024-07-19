@@ -9,6 +9,9 @@ This script processes a YouTube video URL to download the audio, transcribe it, 
 - Whisper (for transcription)
 - Ollama with LLM llama3 installed (for genAI)
 - Ghost blog with Admin API access
+- yt-dlp
+
+Note that some of these dependencies can be installed via brew.
 
 ## Installation
 

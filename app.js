@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const ytdl = require('ytdl-core');
+const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const axios = require('axios');
@@ -19,28 +19,24 @@ const downloadYouTubeAudio = async (url, outputPath) => {
         return;
     }
 
-    const audioStream = ytdl(url, { quality: 'highestaudio' });
-    const ffmpegCommand = ffmpeg()
-        .input(audioStream)
-        .audioBitrate('192k')
-        .audioCodec('pcm_s16le')
-        .format('wav')
-        .output(outputPath)
-        .on('end', () => console.log('Audio conversion completed'))
-        .on('error', (err) => console.error('Error during audio conversion:', err));
-
-    await new Promise((resolve, reject) => {
-        ffmpegCommand.on('end', resolve).on('error', reject).run();
+    return new Promise((resolve, reject) => {
+        exec(`yt-dlp -x --audio-format wav -o "${outputPath}" "${url}"`, (error, stdout, stderr) => {
+            if (error) {
+                reject(`Error during audio download: ${error.message}`);
+            } else {
+                console.log('Audio download completed');
+                resolve();
+            }
+        });
     });
 };
 
 const transcribeAudio = async (audioFile, outputFile) => {
-    if (fs.existsSync(audioFile.replace('.wav','.txt'))) {
+    if (fs.existsSync(audioFile.replace('.wav', '.txt'))) {
         console.log('Transcript file already exists, skipping transcription.');
         return;
     }
 
-    const { exec } = require('child_process');
     return new Promise((resolve, reject) => {
         exec(`whisper ${audioFile} -o ${outputFile}`, (error, stdout, stderr) => {
             if (error) {
