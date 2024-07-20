@@ -69,10 +69,6 @@ const extractYouTubeId = (url) => {
     return urlObj.searchParams.get('v');
 };
 
-const getYouTubeThumbnail = (youtubeId) => {
-    return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
-};
-
 const readImageFile = async (imagePath) => {
     try {
         const imageBuffer = await fs.promises.readFile(imagePath);
@@ -92,7 +88,7 @@ const playButtonSVG = Buffer.from(`
 
 const addPlayButtonOverlay = async (thumbnailPath, outputPath) => {
     try {
-        await sharp(thumbnailPath)
+        await sharp(`${thumbnailPath}.jpg`)
             .composite([{ input: playButtonSVG, gravity: 'center' }])
             .toFile(outputPath);
         console.log('Play button overlay added successfully');
@@ -133,18 +129,31 @@ const createGhostPost = async (apiUrl, adminApiKey, title, body, featureImage, c
     try {
         await ghost.posts.add({
             title: title,
-           html: converter.makeHtml(body),
-           status: 'draft',
-           feature_image: featureImage,
-           codeinjection_head: codeInjectionHead
+            html: converter.makeHtml(body),
+            status: 'draft',
+            feature_image: `${featureImage}.jpg`,
+            codeinjection_head: codeInjectionHead
         },
-        {source: 'html'}
+        { source: 'html' }
         );
 
         console.log('Draft post created successfully');
     } catch (error) {
         console.error(`Failed to create draft post: ${error}`);
     }
+};
+
+const downloadThumbnail = async (url, outputPath) => {
+    return new Promise((resolve, reject) => {
+        exec(`yt-dlp --write-thumbnail --skip-download --convert-thumbnails jpg -o "${outputPath}" "${url}"`, (error, stdout, stderr) => {
+            if (error) {
+                reject(`Error downloading thumbnail: ${error.message}`);
+            } else {
+                console.log('Thumbnail download completed');
+                resolve();
+            }
+        });
+    });
 };
 
 const main = async () => {
@@ -183,9 +192,12 @@ const main = async () => {
 
         const audioFilePath = path.join(directory, `${youtubeId}.wav`);
         const transcriptFilePath = path.join(directory, `${youtubeId}.txt`);
+        const thumbnailPath = path.join(directory, `${youtubeId}`);
+        const outputPath = path.join(directory, `${youtubeId}_with_button.jpg`);
 
         await downloadYouTubeAudio(url, audioFilePath);
         await transcribeAudio(audioFilePath, directory);
+        await downloadThumbnail(url, thumbnailPath);
 
         if (fs.existsSync(transcriptFilePath)) {
             const transcript = fs.readFileSync(transcriptFilePath, 'utf8');
@@ -197,16 +209,6 @@ const main = async () => {
 
             const body = `${title}\n\n${url}\n\n${teaser}\n\n${content}\n\n${cta}`;
             const codeInjectionHead = '<style>figure.gh-article-image {display:none;}</style>';
-            const thumbnailPath = path.join(directory, `${youtubeId}.jpg`);
-            const outputPath = path.join(directory, `${youtubeId}_with_button.jpg`);
-            const thumbnailUrl = getYouTubeThumbnail(youtubeId);
-
-            const response = await axios({ url: thumbnailUrl, responseType: 'stream' });
-            response.data.pipe(fs.createWriteStream(thumbnailPath));
-            await new Promise((resolve, reject) => {
-                response.data.on('end', resolve);
-                response.data.on('error', reject);
-            });
 
             await addPlayButtonOverlay(thumbnailPath, outputPath);
             const ghostApi = new GhostAdminAPI({
